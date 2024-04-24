@@ -1,3 +1,4 @@
+use crate::tokens;
 use ast::Program;
 use oxc_ast::ast::{self};
 
@@ -6,52 +7,53 @@ use crate::tokens::{Expression, Statement, Token};
 pub struct Transpiler {}
 
 impl<'input> Transpiler {
-  pub fn transpile(program: &'input Program) {
+  pub fn transpile(program: &'input Program) -> tokens::Program {
     let mut statements = Vec::new();
-    for statement in &program.body.iter() {
+    for statement in program.body.iter() {
       statements.push(Transpiler::transpile_statement(statement));
     }
+    let program = crate::tokens::Program { statements };
+    return program;
   }
 
   pub fn transpile_statement(statement: &'input ast::Statement) -> Statement {
-    match statement {
-      ast::Statement::Expression(expression) => {
+    match &statement {
+      ast::Statement::ExpressionStatement(expression) => {
         let expression = Transpiler::transpile_expression(expression);
         Statement::Expression(expression)
       }
+      ast::Statement::EmptyStatement(_) => Statement::Expression(Expression::Empty),
       _ => {
         panic!("Invalid statement");
       }
     }
   }
+  pub fn transpile_expression(expression: &'input ast::ExpressionStatement) -> Expression {
+    match &expression.expression {
+      // ast::Expression::BinaryExpression(expression) => {
+      //   panic!("Binary expression not implemented")
+      //   // return Transpiler::transpile_binary_expression(expression);
+      // }
+      // ast::Expression::UnaryExpression(expression) => {
+      //   panic!("Unary expression not implemented")
+      //   return Transpiler::transpile_unary_expression(expression);
 
-  pub fn transpile_expression(expression: &'input ast::Expression) -> Expression {
-    match expression {
-      ast::Expression::NumericLiteral(token) => Expression::Literal(token.clone()),
-      ast::Expression::BinaryExpression(binary_expression) => {
-        Transpiler::transpile_binary_expression(binary_expression)
+      // }
+      ast::Expression::NumericLiteral(expression) => {
+        return Transpiler::transpile_number(expression);
       }
-      ast::Expression::UnaryExpression(operator, right) => {
-        let right = Box::new(Transpiler::transpile_expression(right));
-        Expression::Unary(operator.clone(), right)
+      ast::Expression::StringLiteral(expression) => {
+        return Transpiler::transpile_string(expression);
       }
-      ast::Expression::StringLiteral(token) => Expression::Literal(token.clone()),
       _ => {
         panic!("Invalid expression");
       }
     }
   }
-
-  pub fn transpile_binary_expression(expression: &'input ast::BinaryExpression) -> Expression {
-    let left = Box::new(Transpiler::transpile_expression(&expression.left));
-    let right = Box::new(Transpiler::transpile_expression(&expression.right));
-    let operator = Token::Operator(expression.operator.as_str().to_owned());
-    Expression::Binary(left, operator, right)
+  pub fn transpile_number(expression: &'input ast::NumericLiteral) -> Expression {
+    Expression::Literal(Token::Number(expression.value))
   }
-
-  pub fn transpile_unary_expression(expression: &'input ast::UnaryExpression) -> Expression {
-    let right = Box::new(Transpiler::transpile_expression(right));
-    let 
-    Expression::Unary(&expression.operator.as_str(), right)
+  pub fn transpile_string(expression: &'input ast::StringLiteral) -> Expression {
+    Expression::Literal(Token::_String(expression.value.as_str().to_string()))
   }
 }
