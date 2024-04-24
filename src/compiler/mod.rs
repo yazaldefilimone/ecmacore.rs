@@ -3,9 +3,8 @@ use oxc_span::SourceType;
 
 use crate::{tokens::Program, transpiler::Transpiler};
 
-pub fn compiler(arena_allocator: &Allocator, source: &String) -> () {
+pub fn compiler(arena_allocator: &Allocator, source: &String) -> Program {
   let parser = oxc_parser::Parser::new(&arena_allocator, source, SourceType::default());
   let result = parser.parse();
-  let program = Transpiler::transpile(&result.program);
-  program
+  Transpiler::transpile(&result.program)
 }
