@@ -2,10 +2,12 @@ use std::env::args;
 
 use compiler::compiler;
 
+mod bytecode;
 mod compiler;
 mod parser;
 mod tokens;
 mod transpiler;
+mod vm;
 // mod transpiler;
 
 // use std::env::args;
