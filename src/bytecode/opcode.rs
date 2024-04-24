@@ -1,6 +1,5 @@
 //! The Engine bytecode.
-
-#[allow(dead_code)]
+#![allow(dead_code)]
 /// Opcodes for Engine bytecode instructions.
 pub const OPCODE_HALF: usize = 0x00; // stop the program
 pub const OPCODE_CONST: usize = 0x01; // push a constant onto the stack
