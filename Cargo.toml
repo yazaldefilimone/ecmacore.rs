@@ -6,3 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+highlight_error = "0.1.1"
+oxc_allocator = "0.12.5"
+oxc_ast = "0.12.5"
+oxc_parser = "0.12.5"
+oxc_span = "0.12.5"
+serde = "1.0.198"
+serde_json = { version = "1.0.116", default-features = false, features = ["alloc"] }
+
