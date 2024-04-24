@@ -1,6 +1,9 @@
 // tokens
+
+#[derive(Debug)]
 pub enum Token {
   Identifier(String), // name
+  _String(String),    // "string", 'a'
   Number(f64),        // value
   Operator(String),   // operator
   LParen,             // (
@@ -18,6 +21,7 @@ pub enum Expression {
   Unary(Token, Box<Expression>),                   // operator, right
   Literal(Token),                                  // token
   Grouping(Box<Expression>),                       // expression
+  Empty,                                           // empty
 }
 
 // program
