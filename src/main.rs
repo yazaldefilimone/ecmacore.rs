@@ -1,6 +1,7 @@
 // use std::env::args;
 
 mod bytecode;
+mod checker;
 mod compiler;
 mod context;
 mod errors;
