@@ -8,7 +8,6 @@ mod errors;
 mod formatting;
 mod parser;
 mod stack;
-mod tokens;
 mod utils;
 mod values;
 mod vm;
