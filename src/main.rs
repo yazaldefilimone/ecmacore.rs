@@ -9,7 +9,6 @@ mod formatting;
 mod parser;
 mod stack;
 mod tokens;
-mod transpiler;
 mod utils;
 mod values;
 mod vm;
