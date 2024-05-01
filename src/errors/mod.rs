@@ -1,7 +1,9 @@
+#![allow(dead_code)]
 use core::fmt;
 use std::error::Error;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum EngineError {
   StackUnderflow,
   Other(Box<dyn Error + 'static>),
