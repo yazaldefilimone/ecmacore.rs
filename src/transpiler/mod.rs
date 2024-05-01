@@ -5,7 +5,7 @@ use oxc_ast::ast::{self};
 use crate::tokens::{Expression, Statement, Token};
 
 pub struct Transpiler {}
-
+#[allow(dead_code)]
 impl<'input> Transpiler {
   pub fn transpile(program: &'input Program) -> tokens::Program {
     let mut statements = Vec::new();

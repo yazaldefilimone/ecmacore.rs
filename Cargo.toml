@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 highlight_error = "0.1.1"
 oxc_allocator = "0.12.5"
-oxc_ast = "0.12.5"
+oxc_ast = {version = "0.12.5", features = ["serialize"]}
 oxc_parser = "0.12.5"
 oxc_span = "0.12.5"
 serde = "1.0.198"
