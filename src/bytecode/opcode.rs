@@ -21,3 +21,7 @@ pub const OPCODE_GT: usize = 0x10; // greater than
 pub const OPCODE_GE: usize = 0x11; // greater than or equal
 pub const OPCODE_EQ: usize = 0x12; // equal
 pub const OPCODE_NE: usize = 0x13; // not equal
+
+// if () else if () else if () else
+pub const OPCODE_JUMP: usize = 0x14; // jump to an instruction
+pub const OPCODE_JUMP_IF_FALSE: usize = 0x15; // jump to an instruction if a value is true
