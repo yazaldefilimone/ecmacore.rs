@@ -40,11 +40,78 @@ impl Compiler {
       ast::Statement::ExpressionStatement(stmt) => {
         self.generate_expression(&stmt.expression);
       }
+      ast::Statement::Declaration(decl) => {
+        self.generate_declaration(decl);
+      }
+      ast::Statement::IfStatement(stmt) => {
+        self.generate_if_statement(stmt);
+      }
       ast::Statement::EmptyStatement(_) => {
         self.generate_empty_statement();
       }
+      ast::Statement::BlockStatement(stmt) => {
+        self.generate_block_statement(stmt);
+      }
       _ => {
+        print!("{:?}", statement);
         panic!("Unknown statement")
+      }
+    }
+  }
+  pub fn generate_block_statement(&mut self, statement: &ast::BlockStatement) {
+    for stmt in statement.body.iter() {
+      self.generate_statement(stmt);
+    }
+  }
+  pub fn generate_declaration(&mut self, declaration: &ast::Declaration) {
+    match declaration {
+      ast::Declaration::VariableDeclaration(decl) => {
+        self.generate_variable_declaration(decl);
+      }
+      _ => {
+        panic!("Unknown declaration")
+      }
+    }
+  }
+
+  pub fn generate_if_statement(&mut self, statement: &ast::IfStatement) {
+    // 1. check the condition
+    self.generate_expression(&statement.test);
+    // 2. jump if false
+    self.emit(opcode::OPCODE_JUMP_IF_FALSE);
+    // 3. jump address to the consequent
+    let jump_if_false_address = self.code.len();
+    // 4. emit 0, we will fill this later
+    self.emit(0);
+    // 5. generate the consequent
+    self.generate_statement(&statement.consequent);
+    // 6. jump to the end of the if statement
+    self.emit(opcode::OPCODE_JUMP);
+    // 7. jump address to the end of the if statement
+    let jump_address = self.code.len();
+    // 8. emit 0, we will fill this later
+    self.emit(0);
+    // 9. fill the jump if false address
+    self.code[jump_if_false_address] = self.code.len();
+    // 10. generate the alternate if it exists
+    if let Some(alternate) = &statement.alternate {
+      // 11. generate the alternate
+      self.generate_statement(alternate);
+    }
+    // 12. fill the jump address
+    self.code[jump_address] = self.code.len();
+  }
+
+  pub fn generate_variable_declaration(&mut self, declaration: &ast::VariableDeclaration) {
+    match declaration.kind {
+      ast::VariableDeclarationKind::Let => {
+        // !todo: allocate or store the variable in the stack?
+        // maybe we should alloc  using arena allocator, and finally we free all the memory
+        // self.generate_expression(&declaration.init);
+        todo!("Implement variable declaration")
+      }
+      _ => {
+        panic!("Unknown variable declaration kind")
       }
     }
   }
@@ -57,11 +124,12 @@ impl Compiler {
       ast::Expression::NumericLiteral(value) => {
         self.generate_numeric_literal(value);
       }
-      // ast::ExpressionStatement::StringLiteral(value) => {
-      //   let index = self.string_constants_index(value.clone());
-      //   self.emit(0x02);
-      //   self.emit(index as u8);
-      // }
+      ast::Expression::BooleanLiteral(value) => {
+        self.generate_boolean_literal(value);
+      }
+      ast::Expression::StringLiteral(literal) => {
+        self.generate_string_literal(literal);
+      }
       ast::Expression::BinaryExpression(binary) => {
         self.generate_binary_expression(binary);
       }
@@ -73,6 +141,19 @@ impl Compiler {
 
   pub fn generate_numeric_literal(&mut self, literal: &ast::NumericLiteral) {
     let index = self.numerics_constants_index(literal.value);
+    self.emit(opcode::OPCODE_CONST);
+    self.emit(index as usize);
+  }
+
+  pub fn generate_boolean_literal(&mut self, literal: &ast::BooleanLiteral) {
+    self.constants.push(Value::Boolean(literal.value));
+    let index = self.constants.len() - 1;
+    self.emit(opcode::OPCODE_CONST);
+    self.emit(index as usize);
+  }
+
+  pub fn generate_string_literal(&mut self, literal: &ast::StringLiteral) {
+    let index = self.string_constants_index(literal.value.as_str());
     self.emit(opcode::OPCODE_CONST);
     self.emit(index as usize);
   }
@@ -100,8 +181,10 @@ impl Compiler {
   }
 
   // string constants index
-  pub fn string_constants_index(&mut self, value: String) -> usize {
-    let value = Value::String(value);
+  pub fn string_constants_index(&mut self, value: &str) -> usize {
+    let value = Value::String(value.to_string());
+
+    // maybe it's not the best way to do this, dont reuse the same constants
     for (index, current_value) in self.constants.iter().enumerate() {
       // 1. check if the value is a string
       if !current_value.is_string() {
@@ -133,10 +216,15 @@ impl Compiler {
       "/" => {
         self.emit(opcode::OPCODE_DIV);
       }
+      "===" => {
+        self.emit(opcode::OPCODE_EQ);
+      }
       _ => {
         // **, %, <<, >>, >>>, &, |, ^, ==, !=, ===, !==, <, <=, >, >=, in, instanceof
         panic!("Unknown binary operator")
       }
     }
   }
+
+  // debug disassemble
 }
