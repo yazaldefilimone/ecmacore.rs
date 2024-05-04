@@ -17,6 +17,20 @@ impl Value {
       _ => false,
     }
   }
+
+  pub fn is_truthy(&self) -> bool {
+    match self {
+      Value::Boolean(b) => *b,
+      Value::Number(n) => *n != 0.0,
+      Value::String(s) => !s.is_empty(),
+      Value::EOL => false,
+      // Value::Float(f) => *f != 0.0,
+      // _ => false,
+    }
+  }
+  pub fn is_falsy(&self) -> bool {
+    !self.is_truthy()
+  }
   pub fn get_number(&self) -> f64 {
     match self {
       Value::Number(n) => *n,
