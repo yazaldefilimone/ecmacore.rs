@@ -7,6 +7,10 @@ pub enum Value {
   // Float(f64),
   String(String),
   Boolean(bool),
+  Undefined,
+  Null,
+  Infinity,
+  NaN,
   EOL,
 }
 #[allow(dead_code)]
@@ -24,6 +28,10 @@ impl Value {
       Value::Number(n) => *n != 0.0,
       Value::String(s) => !s.is_empty(),
       Value::EOL => false,
+      Value::Undefined => false,
+      Value::Null => false,
+      Value::Infinity => true,
+      Value::NaN => false,
       // Value::Float(f) => *f != 0.0,
       // _ => false,
     }
@@ -72,6 +80,12 @@ impl Value {
   pub fn get_boolean(&self) -> bool {
     match self {
       Value::Boolean(b) => *b,
+      _ => false,
+    }
+  }
+  pub fn is_undefined(&self) -> bool {
+    match self {
+      Value::Undefined => true,
       _ => false,
     }
   }
