@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 use crate::bytecode::opcode;
+use crate::context::Context;
 use crate::utils::opcode_to_string;
 use crate::values::Value;
 
@@ -7,11 +8,12 @@ pub struct Disassembler<'ctx> {
   constants: &'ctx Vec<Value>,
   code: &'ctx Vec<usize>,
   string: String,
+  ctx: &'ctx mut Context,
 }
 
 impl<'ctx> Disassembler<'ctx> {
-  pub fn new(code: &'ctx Vec<usize>, constants: &'ctx Vec<Value>) -> Self {
-    Self { code, constants, string: String::new() }
+  pub fn new(code: &'ctx Vec<usize>, constants: &'ctx Vec<Value>, ctx: &'ctx mut Context) -> Self {
+    Self { code, constants, string: String::new(), ctx }
   }
   pub fn disassemble(&mut self) -> () {
     println!("~~~~~~~~~~~~~~~~~ Disasseble ~~~~~~~~~~~~~~~");
@@ -39,14 +41,36 @@ impl<'ctx> Disassembler<'ctx> {
       opcode::OPCODE_CONST => {
         return self.disassemble_const(ip, opcode);
       }
+      opcode::OPCODE_ADD => {
+        return self.disassemble_simple(opcode, ip);
+      }
       opcode::OPCODE_EQ => {
         return self.disassemble_simple(opcode, ip);
       }
+      opcode::OPCODE_SET_CONTEXT | opcode::OPCODE_LOAD_CONTEXT => {
+        return self.disassemble_load_set(ip, opcode);
+      }
+      opcode::OPCODE_SUB => {
+        return self.disassemble_simple(opcode, ip);
+      }
+      opcode::OPCODE_MUL => {
+        return self.disassemble_simple(opcode, ip);
+      }
+      opcode::OPCODE_DIV => {
+        return self.disassemble_simple(opcode, ip);
+      }
       _ => {
-        print!("Disassemble: Unknown opcode: {}", opcode_to_string(opcode));
+        print!("[Disassemble] Unknown opcode: {}", opcode_to_string(opcode));
         return ip + 1;
       }
     }
+  }
+  pub fn disassemble_load_set(&mut self, offset: usize, opcode: usize) -> usize {
+    self.dumb_bytecode(offset, 2);
+    self.print_opcode(opcode);
+    let index = self.code[offset + 1];
+    self.string += format!("    ({})", self.ctx.get_variable_name(index)).as_str();
+    return offset + 2;
   }
   pub fn disassemble_const(&mut self, offset: usize, opcode: usize) -> usize {
     self.dumb_bytecode(offset, 2);
