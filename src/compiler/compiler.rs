@@ -1,13 +1,14 @@
-use crate::values::Value;
+use crate::{context::Context, values::Value};
 
 use crate::bytecode::opcode;
 
 use oxc_ast::ast::{self, Program};
 
-pub struct Compiler {
+pub struct Compiler<'ctx> {
   code: Vec<usize>,
   name: String,
   constants: Vec<Value>,
+  ctx: &'ctx mut Context,
 }
 
 #[allow(dead_code)]
@@ -18,12 +19,12 @@ pub struct CompilerReturn {
 }
 
 #[allow(dead_code)]
-impl Compiler {
-  fn new(name: String) -> Self {
-    Self { name, code: Vec::new(), constants: Vec::new() }
+impl<'ctx> Compiler<'ctx> {
+  fn new(name: String, ctx: &'ctx mut Context) -> Self {
+    Self { name, code: Vec::new(), constants: Vec::new(), ctx }
   }
-  pub fn compile(program: &Program) -> CompilerReturn {
-    let mut compiler = Compiler::new("main".to_string());
+  pub fn compile(program: &Program, ctx: &'ctx mut Context) -> CompilerReturn {
+    let mut compiler = Compiler::new("main".to_string(), ctx);
     compiler.generate(program);
     compiler.code.push(opcode::OPCODE_HALF);
     CompilerReturn { name: compiler.name, code: compiler.code, constants: compiler.constants }
@@ -104,15 +105,61 @@ impl Compiler {
 
   pub fn generate_variable_declaration(&mut self, declaration: &ast::VariableDeclaration) {
     match declaration.kind {
-      ast::VariableDeclarationKind::Let => {
-        // !todo: allocate or store the variable in the stack?
-        // maybe we should alloc  using arena allocator, and finally we free all the memory
-        // self.generate_expression(&declaration.init);
-        todo!("Implement variable declaration")
-      }
+      ast::VariableDeclarationKind::Let => self.generate_let_variable_declaration(declaration),
       _ => {
         panic!("Unknown variable declaration kind")
       }
+    }
+  }
+  pub fn generate_let_variable_declaration(&mut self, declaration: &ast::VariableDeclaration) {
+    for declarator in declaration.declarations.iter() {
+      self._binding_pattern(&declarator.id, &declarator.init);
+    }
+  }
+  // !todo: we need to return the index of the variable for make more efficient to get the variable?
+  pub fn _binding_pattern(&mut self, pattern: &ast::BindingPattern, init: &Option<ast::Expression>) {
+    match &pattern.kind {
+      ast::BindingPatternKind::BindingIdentifier(ident) => {
+        let idx = self.ctx.define_variable(ident.name.as_str().to_owned(), None);
+        self.declarator_init(init, idx);
+      }
+      ast::BindingPatternKind::ArrayPattern(elem) => {
+        for element in &elem.elements {
+          if let Some(element) = element {
+            self._binding_pattern(&element, init);
+          }
+        }
+      }
+      ast::BindingPatternKind::ObjectPattern(objects) => {
+        for property in &objects.properties {
+          match &property.key {
+            ast::PropertyKey::Identifier(ident) => {
+              let idx = self.ctx.define_variable(ident.name.as_str().to_owned(), None);
+              self.declarator_init(init, idx);
+            }
+            // ast::PropertyKey::PrivateIdentifier(ident) => {
+            //   self.ctx.define_variable(ident.name.as_str().to_owned(), None);
+            // }
+            ast::PropertyKey::Expression(_) => {
+              panic!("Expression key not supported")
+            }
+            _ => {
+              panic!("Unknown property key")
+            }
+          }
+        }
+      }
+      ast::BindingPatternKind::AssignmentPattern(_) => {
+        panic!("Assignment pattern not supported")
+      }
+    }
+  }
+
+  pub fn declarator_init(&mut self, init: &Option<ast::Expression>, idx: usize) {
+    if let Some(init) = init {
+      self.generate_expression(&init);
+      self.emit(opcode::OPCODE_SET_CONTEXT);
+      self.emit(idx);
     }
   }
   pub fn generate_empty_statement(&mut self) {
@@ -133,10 +180,25 @@ impl Compiler {
       ast::Expression::BinaryExpression(binary) => {
         self.generate_binary_expression(binary);
       }
+      ast::Expression::Identifier(identifier) => {
+        self.generate_identifier(identifier);
+      }
       _ => {
         panic!("Unknown expression")
       }
     }
+  }
+
+  pub fn generate_identifier(&mut self, identifier: &ast::IdentifierReference) {
+    if let Some(index) = self.ctx.get_variable_index(&identifier.name) {
+      self.emit(opcode::OPCODE_LOAD_CONTEXT);
+      self.emit(index);
+      return;
+    }
+    if !self.ctx.is_global_variable(&identifier.name) {
+      panic!("[Compiler] {} is not implemented yet", identifier.name);
+    }
+    panic!("[Compiler] Reference Error: {} is not defined", identifier.name);
   }
 
   pub fn generate_numeric_literal(&mut self, literal: &ast::NumericLiteral) {
