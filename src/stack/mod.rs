@@ -20,8 +20,11 @@ impl Stack {
     self.stack.pop().ok_or(EngineError::StackUnderflow)
   }
 
-  pub fn get_last(&self) -> Result<&Value, EngineError> {
-    self.stack.last().ok_or(EngineError::StackUnderflow)
+  // peek(0) returns the top of the stack
+  #[inline(always)]
+  pub fn peek(&self, index: usize) -> Result<&Value, EngineError> {
+    let index = self.stack.len() - index - 1;
+    self.stack.get(index).ok_or(EngineError::StackUnderflow)
   }
   pub fn is_empty(&self) -> bool {
     self.stack.is_empty()
