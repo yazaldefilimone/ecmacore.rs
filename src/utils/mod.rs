@@ -12,6 +12,16 @@ pub fn opcode_to_string(opcode: usize) -> String {
     opcode::OPCODE_EQ => "EQ".to_string(),
     opcode::OPCODE_JUMP => "JUMP".to_string(),
     opcode::OPCODE_JUMP_IF_FALSE => "JUMP_IF_FALSE".to_string(),
+    opcode::OPCODE_LOAD_CONTEXT => "LOAD".to_string(),
+    opcode::OPCODE_SET_CONTEXT => "SET".to_string(),
     _ => format!("Unknown opcode: {}", opcode),
+  }
+}
+
+pub fn is_global_variable(name: &str) -> bool {
+  match name {
+    "globalThis " | "undefined " | "NaN " | "Infinity " | "Object " | "Function " | "Array " | "String "
+    | "Number " | "Boolean " | "Math " | "Date " | "RegExp " | "Error " | "console " => true,
+    _ => false,
   }
 }
