@@ -50,7 +50,12 @@ impl<'ctx> Engine<'ctx> {
         opcode::OPCODE_JUMP_IF_FALSE => self._jump_if_false_operation(),
         opcode::OPCODE_LOAD_CONTEXT => self._load_operation(),
         opcode::OPCODE_SET_CONTEXT => self._set_operation(),
-        opcode::OPCODE_HALF => return self.stack.pop().unwrap(),
+        opcode::OPCODE_HALF => {
+          if self.stack.is_empty() {
+            return Value::EOL;
+          }
+          return self.stack.pop().unwrap();
+        }
         _ => todo!("opcode not implemented"),
       }
     }

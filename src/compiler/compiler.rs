@@ -26,7 +26,6 @@ impl<'ctx> Compiler<'ctx> {
   pub fn compile(program: &Program, ctx: &'ctx mut Context) -> CompilerReturn {
     let mut compiler = Compiler::new("main".to_string(), ctx);
     compiler.generate(program);
-    compiler.code.push(opcode::OPCODE_HALF);
     CompilerReturn { name: compiler.name, code: compiler.code, constants: compiler.constants }
   }
 
@@ -34,6 +33,8 @@ impl<'ctx> Compiler<'ctx> {
     for statement in program.body.iter() {
       self.generate_statement(statement);
     }
+    // end of program
+    self.code.push(opcode::OPCODE_HALF);
   }
 
   pub fn generate_statement(&mut self, statement: &ast::Statement) {

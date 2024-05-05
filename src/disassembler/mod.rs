@@ -22,10 +22,8 @@ impl<'ctx> Disassembler<'ctx> {
 
     let mut ip = 0;
     while ip < self.code.len() {
-      if ip != 0 {
-        println!("{}", self.string);
-      }
       ip = self.disassemble_instruction(ip);
+      println!("{}", self.string);
     }
     println!("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
   }

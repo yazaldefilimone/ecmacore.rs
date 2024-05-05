@@ -23,4 +23,7 @@ impl Stack {
   pub fn get_last(&self) -> Result<&Value, EngineError> {
     self.stack.last().ok_or(EngineError::StackUnderflow)
   }
+  pub fn is_empty(&self) -> bool {
+    self.stack.is_empty()
+  }
 }
