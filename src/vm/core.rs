@@ -20,15 +20,16 @@ impl<'ctx> Engine<'ctx> {
     //  return VM with 'ctx
     Self { ctx, compiler, stack, instruction_pointer: 0 }
   }
-  pub fn bootstrap(ctx: &'ctx mut Context, source: &String) -> Value {
+  pub fn bootstrap(ctx: &'ctx mut Context, source: &String, _debug: bool) -> Value {
     let arena_allocator = oxc_allocator::Allocator::default();
-    let compiler = compile(&arena_allocator, source);
+    let compiler = compile(&arena_allocator, source, ctx);
     let mut stack = Stack::new(STACK_LIMIT);
     let vm = Engine::new(ctx, &mut stack, &compiler);
     // debug
-    let mut disassembler = Disassembler::new(&compiler.code, &compiler.constants);
-    // --- debug ---
-    disassembler.disassemble();
+    if _debug {
+      let mut disassembler = Disassembler::new(&compiler.code, &compiler.constants, vm.ctx);
+      disassembler.disassemble();
+    }
     vm.run()
   }
 
@@ -47,10 +48,24 @@ impl<'ctx> Engine<'ctx> {
         opcode::OPCODE_EQ => self._eq_operation(),
         opcode::OPCODE_JUMP => self._jump_operation(),
         opcode::OPCODE_JUMP_IF_FALSE => self._jump_if_false_operation(),
+        opcode::OPCODE_LOAD_CONTEXT => self._load_operation(),
+        opcode::OPCODE_SET_CONTEXT => self._set_operation(),
         opcode::OPCODE_HALF => return self.stack.pop().unwrap(),
-        _ => todo!(),
+        _ => todo!("opcode not implemented"),
       }
     }
+  }
+
+  fn _set_operation(&mut self) {
+    let index = self.read();
+    let value = self.stack.get_last().unwrap();
+    self.ctx.set_variable(index, value.to_owned());
+  }
+
+  fn _load_operation(&mut self) {
+    let index = self.read();
+    let value = self.ctx.get_variable_value(index);
+    self.stack.push(value.to_owned());
   }
   fn _jump_operation(&mut self) {
     let index = self.read();
