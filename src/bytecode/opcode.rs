@@ -25,3 +25,7 @@ pub const OPCODE_NE: usize = 0x13; // not equal
 // if () else if () else if () else
 pub const OPCODE_JUMP: usize = 0x14; // jump to an instruction
 pub const OPCODE_JUMP_IF_FALSE: usize = 0x15; // jump to an instruction if a value is true
+
+// variables
+pub const OPCODE_LOAD_CONTEXT: usize = 0x17; // load a global variable
+pub const OPCODE_SET_CONTEXT: usize = 0x18; // store a global variable
