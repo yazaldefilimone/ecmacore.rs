@@ -63,7 +63,8 @@ impl<'ctx> Engine<'ctx> {
 
   fn _set_operation(&mut self) {
     let index = self.read();
-    let value = self.stack.get_last().unwrap();
+    //  get last value from stack
+    let value = self.stack.peek(0).unwrap();
     self.ctx.set_variable(index, value.to_owned());
   }
 

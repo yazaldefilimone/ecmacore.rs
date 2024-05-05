@@ -19,7 +19,6 @@ impl<'ctx> Disassembler<'ctx> {
     println!("~~~~~~~~~~~~~~~~~ Disasseble ~~~~~~~~~~~~~~~");
     println!("Offset    Bytes     Opcode    Operand");
     println!("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-
     let mut ip = 0;
     while ip < self.code.len() {
       ip = self.disassemble_instruction(ip);
