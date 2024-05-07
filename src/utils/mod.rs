@@ -12,8 +12,11 @@ pub fn opcode_to_string(opcode: usize) -> String {
     opcode::OPCODE_EQ => "EQ".to_string(),
     opcode::OPCODE_JUMP => "JUMP".to_string(),
     opcode::OPCODE_JUMP_IF_FALSE => "JUMP_IF_FALSE".to_string(),
-    opcode::OPCODE_LOAD_CONTEXT => "LOAD".to_string(),
-    opcode::OPCODE_SET_CONTEXT => "SET".to_string(),
+    opcode::OPCODE_LOAD_GLOBAL_SCOPE => "LOAD_GLOBAL_SCOPE".to_string(),
+    opcode::OPCODE_SET_GLOBAL_SCOPE => "SET_GLOBAL_SCOPE".to_string(),
+    opcode::OPCODE_LOAD_LOCAL_SCOPE => "LOAD_LOCAL_SCOPE".to_string(),
+    opcode::OPCODE_SET_LOCAL_SCOPE => "SET_LOCAL_SCOPE".to_string(),
+    opcode::OPCODE_POP => "POP".to_string(),
     _ => format!("Unknown opcode: {}", opcode),
   }
 }

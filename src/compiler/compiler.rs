@@ -1,8 +1,8 @@
+use crate::bytecode::opcode;
 use crate::{context::Context, values::Value};
 
-use crate::bytecode::opcode;
-
 use oxc_ast::ast::{self, Program};
+use oxc_syntax::NumberBase;
 
 pub struct Compiler<'ctx> {
   code: Vec<usize>,
@@ -60,9 +60,58 @@ impl<'ctx> Compiler<'ctx> {
       }
     }
   }
+
+  pub fn generate_expression(&mut self, expression: &ast::Expression) {
+    match &expression {
+      ast::Expression::NumericLiteral(value) => {
+        self.generate_numeric_literal(value);
+      }
+      ast::Expression::BooleanLiteral(value) => {
+        self.generate_boolean_literal(value);
+      }
+      ast::Expression::StringLiteral(literal) => {
+        self.generate_string_literal(literal);
+      }
+      ast::Expression::BinaryExpression(binary) => {
+        self.generate_binary_expression(binary);
+      }
+      ast::Expression::Identifier(identifier) => {
+        self.generate_identifier(identifier);
+      }
+      ast::Expression::AssignmentExpression(assignment) => {
+        self.generate_assignment_expression(assignment);
+      }
+      _ => {
+        panic!("Unknown expression")
+      }
+    }
+  }
+
   pub fn generate_block_statement(&mut self, statement: &ast::BlockStatement) {
     for stmt in statement.body.iter() {
       self.generate_statement(stmt);
+    }
+  }
+  pub fn generate_assignment_expression(&mut self, assignment: &ast::AssignmentExpression) {
+    if assignment.left.is_identifier() {
+      let variable_idx = self._assign_left_identifier(&assignment.left);
+      self.generate_expression(&assignment.right);
+      self.emit(opcode::OPCODE_SET_GLOBAL_SCOPE);
+      self.emit(variable_idx);
+      return;
+    }
+    panic!("Unknown left assignment expression")
+  }
+
+  pub fn _assign_left_identifier(&mut self, identifier: &ast::AssignmentTarget) -> usize {
+    match identifier {
+      ast::AssignmentTarget::SimpleAssignmentTarget(assign) => match assign {
+        ast::SimpleAssignmentTarget::AssignmentTargetIdentifier(id) => self.get_identifier_index(id),
+        _ => panic!("Unknown left assignment expression"),
+      },
+      _ => {
+        panic!("Unknown left assignment expression")
+      }
     }
   }
   pub fn generate_declaration(&mut self, declaration: &ast::Declaration) {
@@ -121,7 +170,7 @@ impl<'ctx> Compiler<'ctx> {
   pub fn _binding_pattern(&mut self, pattern: &ast::BindingPattern, init: &Option<ast::Expression>) {
     match &pattern.kind {
       ast::BindingPatternKind::BindingIdentifier(ident) => {
-        let idx = self.ctx.define_variable(ident.name.as_str().to_owned(), None);
+        let idx = self._define_variable(ident.name.as_str(), false);
         self.declarator_init(init, idx);
       }
       ast::BindingPatternKind::ArrayPattern(elem) => {
@@ -135,7 +184,7 @@ impl<'ctx> Compiler<'ctx> {
         for property in &objects.properties {
           match &property.key {
             ast::PropertyKey::Identifier(ident) => {
-              let idx = self.ctx.define_variable(ident.name.as_str().to_owned(), None);
+              let idx = self._define_variable(ident.name.as_str(), false);
               self.declarator_init(init, idx);
             }
             // ast::PropertyKey::PrivateIdentifier(ident) => {
@@ -159,7 +208,7 @@ impl<'ctx> Compiler<'ctx> {
   pub fn declarator_init(&mut self, init: &Option<ast::Expression>, idx: usize) {
     if let Some(init) = init {
       self.generate_expression(&init);
-      self.emit(opcode::OPCODE_SET_CONTEXT);
+      self.emit(opcode::OPCODE_SET_GLOBAL_SCOPE);
       self.emit(idx);
     }
   }
@@ -167,32 +216,10 @@ impl<'ctx> Compiler<'ctx> {
     // We want to generate a half opcode here? huh... I don't know what to do here yet.
     self.emit(opcode::OPCODE_HALF);
   }
-  pub fn generate_expression(&mut self, expression: &ast::Expression) {
-    match &expression {
-      ast::Expression::NumericLiteral(value) => {
-        self.generate_numeric_literal(value);
-      }
-      ast::Expression::BooleanLiteral(value) => {
-        self.generate_boolean_literal(value);
-      }
-      ast::Expression::StringLiteral(literal) => {
-        self.generate_string_literal(literal);
-      }
-      ast::Expression::BinaryExpression(binary) => {
-        self.generate_binary_expression(binary);
-      }
-      ast::Expression::Identifier(identifier) => {
-        self.generate_identifier(identifier);
-      }
-      _ => {
-        panic!("Unknown expression")
-      }
-    }
-  }
 
   pub fn generate_identifier(&mut self, identifier: &ast::IdentifierReference) {
     if let Some(index) = self.ctx.get_variable_index(&identifier.name) {
-      self.emit(opcode::OPCODE_LOAD_CONTEXT);
+      self.emit(opcode::OPCODE_LOAD_GLOBAL_SCOPE);
       self.emit(index);
       return;
     }
@@ -201,15 +228,21 @@ impl<'ctx> Compiler<'ctx> {
     }
     panic!("[Compiler] Reference Error: {} is not defined", identifier.name);
   }
+  pub fn get_identifier_index(&mut self, identifier: &ast::IdentifierReference) -> usize {
+    if let Some(index) = self.ctx.get_variable_index(&identifier.name) {
+      return index;
+    }
+    panic!("[Compiler] Reference Error: {} is not defined", identifier.name);
+  }
 
   pub fn generate_numeric_literal(&mut self, literal: &ast::NumericLiteral) {
-    let index = self.numerics_constants_index(literal.value);
+    let index = self.numerics_constants_index(literal);
     self.emit(opcode::OPCODE_CONST);
     self.emit(index as usize);
   }
 
   pub fn generate_boolean_literal(&mut self, literal: &ast::BooleanLiteral) {
-    self.constants.push(Value::Boolean(literal.value));
+    self.constants.push(Value::new_boolean(literal.value));
     let index = self.constants.len() - 1;
     self.emit(opcode::OPCODE_CONST);
     self.emit(index as usize);
@@ -225,16 +258,24 @@ impl<'ctx> Compiler<'ctx> {
     self.code.push(byte);
   }
 
+  pub fn _new_number(&mut self, value: &ast::NumericLiteral) -> Value {
+    match &value.base {
+      NumberBase::Decimal => Value::new_integer(value.value as i64),
+      NumberBase::Float => Value::new_float(value.value),
+      _ => Value::new_integer(value.value as i64),
+    }
+  }
+
   // numeric constants index
-  pub fn numerics_constants_index(&mut self, value: f64) -> usize {
-    let value = Value::Number(value);
+  pub fn numerics_constants_index(&mut self, value: &ast::NumericLiteral) -> usize {
+    let value = self._new_number(&value);
     for (index, current_value) in self.constants.iter().enumerate() {
       // 1. check if the value is a number
-      if !current_value.is_number() {
+      if !current_value.is_number() && !current_value.is_float() {
         continue;
       }
       // 2. check if the value is exists in the constants
-      if current_value.get_number() == value.get_number() {
+      if current_value.is_equal(&value) {
         return index;
       }
     }
@@ -245,7 +286,7 @@ impl<'ctx> Compiler<'ctx> {
 
   // string constants index
   pub fn string_constants_index(&mut self, value: &str) -> usize {
-    let value = Value::String(value.to_string());
+    let value = Value::new_string(value.to_owned());
 
     // maybe it's not the best way to do this, dont reuse the same constants
     for (index, current_value) in self.constants.iter().enumerate() {
@@ -261,6 +302,12 @@ impl<'ctx> Compiler<'ctx> {
     // 3. if the value is not exists in the constants, push it
     self.constants.push(value);
     return self.constants.len() - 1;
+  }
+  pub fn _define_variable(&mut self, name: &str, is_declarable: bool) -> usize {
+    if !is_declarable && self.ctx.is_exist_variable(name) {
+      panic!("[Compiler] SyntaxError: '{}' has already been declared.", name);
+    }
+    self.ctx.define_variable(name.to_owned(), None)
   }
 
   pub fn generate_binary_expression(&mut self, binary: &ast::BinaryExpression) {
@@ -288,6 +335,4 @@ impl<'ctx> Compiler<'ctx> {
       }
     }
   }
-
-  // debug disassemble
 }

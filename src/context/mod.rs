@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 use crate::{utils::is_global_variable, values::Value};
 pub struct Store {
-  name: String,
-  value: Value,
+  pub name: String,
+  pub value: Value,
 }
 pub struct Context {
   store: Vec<Store>,
@@ -71,7 +71,7 @@ impl Context {
           name,
           value: match value {
             Some(v) => v,
-            None => Value::Undefined,
+            None => Value::new_undefined(),
           },
         });
         self.store.len() - 1

@@ -32,35 +32,38 @@ impl<'ctx> Disassembler<'ctx> {
     self.string += format!("{:04}      ", ip).as_str();
     let opcode = self.code[ip];
     match opcode {
-      opcode::OPCODE_HALF => {
+      opcode::OPCODE_HALF
+      | opcode::OPCODE_SUB
+      | opcode::OPCODE_MUL
+      | opcode::OPCODE_DIV
+      | opcode::OPCODE_ADD
+      | opcode::OPCODE_POP
+      | opcode::OPCODE_EQ => {
         return self.disassemble_simple(opcode, ip);
       }
       opcode::OPCODE_CONST => {
         return self.disassemble_const(ip, opcode);
       }
-      opcode::OPCODE_ADD => {
-        return self.disassemble_simple(opcode, ip);
-      }
-      opcode::OPCODE_EQ => {
-        return self.disassemble_simple(opcode, ip);
-      }
-      opcode::OPCODE_SET_CONTEXT | opcode::OPCODE_LOAD_CONTEXT => {
+      opcode::OPCODE_SET_GLOBAL_SCOPE | opcode::OPCODE_LOAD_GLOBAL_SCOPE => {
         return self.disassemble_load_set(ip, opcode);
       }
-      opcode::OPCODE_SUB => {
-        return self.disassemble_simple(opcode, ip);
-      }
-      opcode::OPCODE_MUL => {
-        return self.disassemble_simple(opcode, ip);
-      }
-      opcode::OPCODE_DIV => {
-        return self.disassemble_simple(opcode, ip);
+      opcode::OPCODE_JUMP_IF_FALSE | opcode::OPCODE_JUMP => {
+        return self.disassemble_jump(ip, opcode);
       }
       _ => {
         print!("[Disassemble] Unknown opcode: {}", opcode_to_string(opcode));
         return ip + 1;
       }
     }
+  }
+
+  pub fn disassemble_jump(&mut self, offset: usize, opcode: usize) -> usize {
+    self.dumb_bytecode(offset, 3);
+    self.print_opcode(opcode);
+    let index = self.code[offset + 1];
+    let jump = self.code[offset + 2];
+    self.string += format!("    ({}) -> {}", index, jump).as_str();
+    return offset + 3;
   }
   pub fn disassemble_load_set(&mut self, offset: usize, opcode: usize) -> usize {
     self.dumb_bytecode(offset, 2);

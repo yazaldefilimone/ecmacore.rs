@@ -1,13 +1,15 @@
+#![allow(dead_code)]
 use crate::errors::EngineError;
 use crate::values::Value;
 
 pub struct Stack {
   stack: Vec<Value>,
+  scope_counter: usize,
 }
 
 impl Stack {
   pub fn new(capacity: usize) -> Self {
-    Self { stack: Vec::with_capacity(capacity) }
+    Self { stack: Vec::with_capacity(capacity), scope_counter: 0 }
   }
 
   #[inline(always)]
@@ -28,5 +30,22 @@ impl Stack {
   }
   pub fn is_empty(&self) -> bool {
     self.stack.is_empty()
+  }
+  pub fn is_global_scope(&self) -> bool {
+    self.scope_counter == 1
+  }
+  pub fn enter_scope(&mut self) {
+    self.scope_counter += 1;
+  }
+  pub fn exit_scope(&mut self) {
+    self.scope_counter -= 1;
+  }
+  pub fn push_in_global_scope(&mut self, value: Value, frame: usize) {
+    // set in global scope only when the scope counter larger than 1
+    if !self.is_global_scope() {
+      self.stack.insert(frame, value);
+      return;
+    }
+    self.push(value);
   }
 }
