@@ -1,3 +1,9 @@
 let age: number = 10;
 
-let age = age + 11;
+age = age + 11;
+
+{
+  const age = undefined;
+}
+
+const a = 10;

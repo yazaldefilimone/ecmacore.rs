@@ -52,6 +52,8 @@ impl<'ctx> Engine<'ctx> {
         opcode::OPCODE_LOAD_GLOBAL_SCOPE => self.load_global_scope_operation(),
         opcode::OPCODE_SET_GLOBAL_SCOPE => self.set_global_scope_operation(),
         opcode::OPCODE_POP => return self.stack.peek(0).unwrap().to_owned(),
+        opcode::OPCODE_SET_LOCAL_SCOPE => self.set_local_scope_operation(),
+        opcode::OPCODE_LOAD_LOCAL_SCOPE => self.load_local_scope_operation(),
         opcode::OPCODE_HALF => {
           if !self.stack.is_empty() {
             let value = self.stack.pop().unwrap();
@@ -64,6 +66,9 @@ impl<'ctx> Engine<'ctx> {
       }
     }
   }
+
+  fn set_local_scope_operation(&mut self) {}
+  fn load_local_scope_operation(&mut self) {}
 
   fn set_global_scope_operation(&mut self) {
     let index = self.read();

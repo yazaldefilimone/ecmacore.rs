@@ -21,7 +21,7 @@ pub fn opcode_to_string(opcode: usize) -> String {
   }
 }
 
-pub fn is_global_variable(name: &str) -> bool {
+pub fn is_internal_variable(name: &str) -> bool {
   match name {
     "globalThis " | "undefined " | "NaN " | "Infinity " | "Object " | "Function " | "Array " | "String "
     | "Number " | "Boolean " | "Math " | "Date " | "RegExp " | "Error " | "console " => true,

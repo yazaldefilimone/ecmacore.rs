@@ -1,7 +1,8 @@
 use crate::bytecode::opcode;
+use crate::context::StoreKind;
 use crate::{context::Context, values::Value};
 
-use oxc_ast::ast::{self, Program};
+use oxc_ast::ast::{self, AssignmentTarget, Program};
 use oxc_syntax::NumberBase;
 
 pub struct Compiler<'ctx> {
@@ -52,7 +53,7 @@ impl<'ctx> Compiler<'ctx> {
         self.generate_empty_statement();
       }
       ast::Statement::BlockStatement(stmt) => {
-        self.generate_block_statement(stmt);
+        self._block_statement(stmt);
       }
       _ => {
         print!("{:?}", statement);
@@ -79,7 +80,7 @@ impl<'ctx> Compiler<'ctx> {
         self.generate_identifier(identifier);
       }
       ast::Expression::AssignmentExpression(assignment) => {
-        self.generate_assignment_expression(assignment);
+        self._assignment_expression(assignment);
       }
       _ => {
         panic!("Unknown expression")
@@ -87,33 +88,62 @@ impl<'ctx> Compiler<'ctx> {
     }
   }
 
-  pub fn generate_block_statement(&mut self, statement: &ast::BlockStatement) {
+  pub fn _block_statement(&mut self, statement: &ast::BlockStatement) {
     for stmt in statement.body.iter() {
+      self.ctx.enter_scope();
       self.generate_statement(stmt);
+      self.emit(opcode::OPCODE_POP);
+      self.ctx.exit_scope();
     }
   }
-  pub fn generate_assignment_expression(&mut self, assignment: &ast::AssignmentExpression) {
-    if assignment.left.is_identifier() {
-      let variable_idx = self._assign_left_identifier(&assignment.left);
-      self.generate_expression(&assignment.right);
+
+  pub fn _assignment_expression(&mut self, assignment: &ast::AssignmentExpression) {
+    match assignment.operator.as_str() {
+      "=" => {
+        self.generate_assignment_target(&assignment.left, &assignment.right);
+      }
+      _ => {
+        panic!("{} is not supported", assignment.operator.as_str())
+      }
+    }
+  }
+  pub fn generate_assignment_target(&mut self, target: &AssignmentTarget, init: &ast::Expression) {
+    if target.is_identifier() {
+      let variable_idx = self.get_assignment_target(&target);
+      self.generate_expression(init);
       self.emit(opcode::OPCODE_SET_GLOBAL_SCOPE);
       self.emit(variable_idx);
       return;
     }
     panic!("Unknown left assignment expression")
   }
-
-  pub fn _assign_left_identifier(&mut self, identifier: &ast::AssignmentTarget) -> usize {
+  pub fn get_assignment_target(&mut self, identifier: &ast::AssignmentTarget) -> usize {
     match identifier {
-      ast::AssignmentTarget::SimpleAssignmentTarget(assign) => match assign {
-        ast::SimpleAssignmentTarget::AssignmentTargetIdentifier(id) => self.get_identifier_index(id),
-        _ => panic!("Unknown left assignment expression"),
-      },
+      ast::AssignmentTarget::SimpleAssignmentTarget(assign) => {
+        return self._simple_assignment_target(assign);
+      }
+      ast::AssignmentTarget::AssignmentTargetPattern(_pattern) => {
+        panic!("AssignmentTargetPattern is not supported")
+        // return self._pattern_assignment_target(pattern);
+      }
+    }
+  }
+  pub fn _simple_assignment_target(&mut self, target: &ast::SimpleAssignmentTarget) -> usize {
+    match target {
+      ast::SimpleAssignmentTarget::AssignmentTargetIdentifier(id) => {
+        if let Some(kind) = self.ctx.get_kind_variable(&id.name) {
+          if kind == StoreKind::Const {
+            panic!("[Compiler] TypeError: '{}' is a read-only variable", id.name);
+          }
+        }
+        self.get_variable_index(id)
+      }
       _ => {
         panic!("Unknown left assignment expression")
       }
     }
   }
+
   pub fn generate_declaration(&mut self, declaration: &ast::Declaration) {
     match declaration {
       ast::Declaration::VariableDeclaration(decl) => {
@@ -155,28 +185,40 @@ impl<'ctx> Compiler<'ctx> {
 
   pub fn generate_variable_declaration(&mut self, declaration: &ast::VariableDeclaration) {
     match declaration.kind {
-      ast::VariableDeclarationKind::Let => self.generate_let_variable_declaration(declaration),
+      ast::VariableDeclarationKind::Let => self._variable_declaration(declaration, StoreKind::Let),
+      ast::VariableDeclarationKind::Const => self._variable_declaration(declaration, StoreKind::Const),
       _ => {
         panic!("Unknown variable declaration kind")
       }
     }
   }
-  pub fn generate_let_variable_declaration(&mut self, declaration: &ast::VariableDeclaration) {
+  pub fn _variable_declaration(&mut self, declaration: &ast::VariableDeclaration, kind: StoreKind) {
     for declarator in declaration.declarations.iter() {
-      self._binding_pattern(&declarator.id, &declarator.init);
+      self._variable_declarator(&declarator.id, &declarator.init, &kind);
     }
   }
   // !todo: we need to return the index of the variable for make more efficient to get the variable?
-  pub fn _binding_pattern(&mut self, pattern: &ast::BindingPattern, init: &Option<ast::Expression>) {
+  pub fn _variable_declarator(
+    &mut self,
+    pattern: &ast::BindingPattern,
+    init: &Option<ast::Expression>,
+    kind: &StoreKind,
+  ) {
     match &pattern.kind {
       ast::BindingPatternKind::BindingIdentifier(ident) => {
-        let idx = self._define_variable(ident.name.as_str(), false);
+        if kind == &StoreKind::Const && init.is_none() {
+          panic!(
+            "[Compiler] SyntaxError: 'const' declarations must be initialized at '{}'",
+            ident.name
+          );
+        }
+        let idx = self._define_variable(ident.name.as_str(), kind.clone());
         self.declarator_init(init, idx);
       }
       ast::BindingPatternKind::ArrayPattern(elem) => {
         for element in &elem.elements {
           if let Some(element) = element {
-            self._binding_pattern(&element, init);
+            self._variable_declarator(&element, init, &kind);
           }
         }
       }
@@ -184,7 +226,7 @@ impl<'ctx> Compiler<'ctx> {
         for property in &objects.properties {
           match &property.key {
             ast::PropertyKey::Identifier(ident) => {
-              let idx = self._define_variable(ident.name.as_str(), false);
+              let idx = self._define_variable(ident.name.as_str(), kind.clone());
               self.declarator_init(init, idx);
             }
             // ast::PropertyKey::PrivateIdentifier(ident) => {
@@ -208,9 +250,16 @@ impl<'ctx> Compiler<'ctx> {
   pub fn declarator_init(&mut self, init: &Option<ast::Expression>, idx: usize) {
     if let Some(init) = init {
       self.generate_expression(&init);
-      self.emit(opcode::OPCODE_SET_GLOBAL_SCOPE);
-      self.emit(idx);
+    } else {
+      // todo: panic error when is `const` declaraction
+      self.constants.push(Value::new_undefined())
     }
+    if self.ctx.is_global_scope() {
+      self.emit(opcode::OPCODE_SET_GLOBAL_SCOPE);
+    } else {
+      self.emit(opcode::OPCODE_SET_LOCAL_SCOPE);
+    }
+    self.emit(idx);
   }
   pub fn generate_empty_statement(&mut self) {
     // We want to generate a half opcode here? huh... I don't know what to do here yet.
@@ -223,12 +272,12 @@ impl<'ctx> Compiler<'ctx> {
       self.emit(index);
       return;
     }
-    if !self.ctx.is_global_variable(&identifier.name) {
-      panic!("[Compiler] {} is not implemented yet", identifier.name);
+    if !self.ctx.is_internal(&identifier.name) {
+      clepanic!("[Compiler] {} is not implemented yet", identifier.name);
     }
     panic!("[Compiler] Reference Error: {} is not defined", identifier.name);
   }
-  pub fn get_identifier_index(&mut self, identifier: &ast::IdentifierReference) -> usize {
+  pub fn get_variable_index(&mut self, identifier: &ast::IdentifierReference) -> usize {
     if let Some(index) = self.ctx.get_variable_index(&identifier.name) {
       return index;
     }
@@ -303,11 +352,22 @@ impl<'ctx> Compiler<'ctx> {
     self.constants.push(value);
     return self.constants.len() - 1;
   }
-  pub fn _define_variable(&mut self, name: &str, is_declarable: bool) -> usize {
-    if !is_declarable && self.ctx.is_exist_variable(name) {
-      panic!("[Compiler] SyntaxError: '{}' has already been declared.", name);
+  pub fn _define_variable(&mut self, name: &str, kind: StoreKind) -> usize {
+    match kind {
+      StoreKind::Const => {
+        if self.ctx.is_exist_variable(name) {
+          panic!("[Compiler] SyntaxError: '{}' has already been declared.", name);
+        }
+        self.ctx.define_variable(name.to_owned(), None, StoreKind::Const)
+      }
+      StoreKind::Let => {
+        if self.ctx.is_exist_variable(name) {
+          panic!("[Compiler] SyntaxError: '{}' has already been declared.", name);
+        }
+        self.ctx.define_variable(name.to_owned(), None, StoreKind::Let)
+      }
+      StoreKind::Var => self.ctx.define_variable(name.to_owned(), None, StoreKind::Var),
     }
-    self.ctx.define_variable(name.to_owned(), None)
   }
 
   pub fn generate_binary_expression(&mut self, binary: &ast::BinaryExpression) {

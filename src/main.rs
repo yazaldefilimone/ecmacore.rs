@@ -28,6 +28,7 @@ fn main() {
     std::fs::read_to_string(&filename).expect("could not read file")
   };
   let mut ctx = context::Context::new();
+
   let result = core::Engine::bootstrap(&mut ctx, &source, flag == "--debug");
   println!("{:?}", result);
 }
