@@ -1,5 +1,6 @@
 #![allow(dead_code)]
-use std::rc;
+
+use std::ops::AddAssign;
 
 use crate::{utils::is_internal_variable, values::Value};
 #[derive(Debug, Clone, PartialEq)]
@@ -67,17 +68,34 @@ impl Context {
     }
     self.local[index].value = value
   }
+  pub fn deallocate_variable_in_scope(&mut self) -> usize {
+    let mut count: usize = 0;
+    let total = self.local.len() - 1;
+    for len in total..0 {
+      if self.local[len].level == self.current_scope {
+        self.local.pop();
+        count.add_assign(1);
+      }
+    }
+    return count;
+  }
   pub fn get_variable(&self, index: usize) -> &Store {
     if self.is_global_scope() {
       return &self.global[index];
     }
     return &self.local[index];
   }
+  pub fn get_local_variable_name(&self, index: usize) -> &String {
+    &self.local[index].name
+  }
+  pub fn get_global_variable_name(&self, index: usize) -> &String {
+    &self.global[index].name
+  }
   pub fn get_variable_name(&self, index: usize) -> &String {
     if self.is_global_scope() {
-      return &self.global[index].name;
+      return self.get_global_variable_name(index);
     }
-    return &self.local[index].name;
+    return self.get_local_variable_name(index);
   }
   pub fn get_variable_value(&self, index: usize) -> &Value {
     if self.is_global_scope() {
@@ -89,23 +107,13 @@ impl Context {
     if self.is_global_scope() {
       return self.global.iter().any(|s| s.name == name);
     }
-    let result = self.local.iter().any(|s| s.name == name
-    if !result {
-      self.global.iter().any(|s| s.name == name)
-    } else {
-      result
-    }
+    self.local.iter().any(|s| s.name == name)
   }
   pub fn get_kind_variable(&self, name: &str) -> Option<StoreKind> {
     if self.is_global_scope() {
       return self.global.iter().find(|s| s.name == name).map(|s| s.kind.clone());
     }
-    let result = self.local.iter().find(|s| s.name == name).map(|s| s.kind.clone());
-
-    if result.is_none() {
-      return self.global.iter().find(|s| s.name == name).map(|s| s.kind.clone());
-    }
-    result
+    self.local.iter().find(|s| s.name == name).map(|s| s.kind.clone())
   }
   pub fn is_internal(&self, name: &str) -> bool {
     is_internal_variable(name)
@@ -114,11 +122,7 @@ impl Context {
     if self.is_global_scope() {
       return self.global.iter().position(|s| s.name == name);
     }
-    let result = self.local.iter().position(|s| s.name == name);
-    if result.is_none() {
-      return self.global.iter().position(|s| s.name == name);
-    }
-    result
+    self.local.iter().position(|s| s.name == name)
   }
 
   pub fn enter_scope(&mut self) {
@@ -161,7 +165,6 @@ impl Context {
     let index = match self.get_variable_index(&name) {
       Some(index) => index,
       None => {
-        // register new variable by default is undefined
         self.local.push(Store {
           name,
           kind,

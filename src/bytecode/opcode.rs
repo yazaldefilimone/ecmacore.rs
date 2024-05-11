@@ -31,3 +31,4 @@ pub const OPCODE_SET_LOCAL_SCOPE: usize = 0x1A; // store a local variable
 
 //
 pub const OPCODE_POP: usize = 0x16; // pop a value from the stack
+pub const OPCODE_SCOPE_EXIT: usize = 0x17;

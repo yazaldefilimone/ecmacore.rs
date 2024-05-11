@@ -45,7 +45,10 @@ impl<'ctx> Disassembler<'ctx> {
         return self.disassemble_const(ip, opcode);
       }
       opcode::OPCODE_SET_GLOBAL_SCOPE | opcode::OPCODE_LOAD_GLOBAL_SCOPE => {
-        return self.disassemble_load_set(ip, opcode);
+        return self.disassemble_global(ip, opcode);
+      }
+      opcode::OPCODE_SET_LOCAL_SCOPE | opcode::OPCODE_LOAD_LOCAL_SCOPE => {
+        return self.disassemble_local(ip, opcode);
       }
       opcode::OPCODE_JUMP_IF_FALSE | opcode::OPCODE_JUMP => {
         return self.disassemble_jump(ip, opcode);
@@ -65,11 +68,18 @@ impl<'ctx> Disassembler<'ctx> {
     self.string += format!("    ({}) -> {}", index, jump).as_str();
     return offset + 3;
   }
-  pub fn disassemble_load_set(&mut self, offset: usize, opcode: usize) -> usize {
+  pub fn disassemble_global(&mut self, offset: usize, opcode: usize) -> usize {
     self.dumb_bytecode(offset, 2);
     self.print_opcode(opcode);
     let index = self.code[offset + 1];
-    self.string += format!("    ({})", self.ctx.get_variable_name(index)).as_str();
+    self.string += format!("    ({})", self.ctx.get_global_variable_name(index)).as_str();
+    return offset + 2;
+  }
+  pub fn disassemble_local(&mut self, offset: usize, opcode: usize) -> usize {
+    self.dumb_bytecode(offset, 2);
+    self.print_opcode(opcode);
+    let index = self.code[offset + 1];
+    self.string += format!("    ({})", self.ctx.get_local_variable_name(index)).as_str();
     return offset + 2;
   }
   pub fn disassemble_const(&mut self, offset: usize, opcode: usize) -> usize {

@@ -89,12 +89,12 @@ impl<'ctx> Compiler<'ctx> {
   }
 
   pub fn _block_statement(&mut self, statement: &ast::BlockStatement) {
+    self.enter_scope();
     for stmt in statement.body.iter() {
-      self.ctx.enter_scope();
       self.generate_statement(stmt);
-      self.emit(opcode::OPCODE_POP);
-      self.ctx.exit_scope();
     }
+    self.emit(opcode::OPCODE_POP);
+    self.exit_scope();
   }
 
   pub fn _assignment_expression(&mut self, assignment: &ast::AssignmentExpression) {
@@ -273,7 +273,7 @@ impl<'ctx> Compiler<'ctx> {
       return;
     }
     if !self.ctx.is_internal(&identifier.name) {
-      clepanic!("[Compiler] {} is not implemented yet", identifier.name);
+      panic!("[Compiler] {} is not implemented yet", identifier.name);
     }
     panic!("[Compiler] Reference Error: {} is not defined", identifier.name);
   }
@@ -303,8 +303,47 @@ impl<'ctx> Compiler<'ctx> {
     self.emit(index as usize);
   }
 
+  pub fn generate_binary_expression(&mut self, binary: &ast::BinaryExpression) {
+    self.generate_expression(&binary.left);
+    self.generate_expression(&binary.right);
+    match binary.operator.as_str() {
+      "+" => {
+        self.emit(opcode::OPCODE_ADD);
+      }
+      "-" => {
+        self.emit(opcode::OPCODE_SUB);
+      }
+      "*" => {
+        self.emit(opcode::OPCODE_MUL);
+      }
+      "/" => {
+        self.emit(opcode::OPCODE_DIV);
+      }
+      "===" => {
+        self.emit(opcode::OPCODE_EQ);
+      }
+      _ => {
+        // **, %, <<, >>, >>>, &, |, ^, ==, !=, ===, !==, <, <=, >, >=, in, instanceof
+        panic!("Unknown binary operator")
+      }
+    }
+  }
   pub fn emit(&mut self, byte: usize) {
     self.code.push(byte);
+  }
+
+  pub fn exit_scope(&mut self) {
+    let len_of_variable_exit = self.ctx.deallocate_variable_in_scope();
+    println!("{}", len_of_variable_exit);
+    if len_of_variable_exit > 0 {
+      self.emit(opcode::OPCODE_SCOPE_EXIT);
+      self.emit(len_of_variable_exit);
+    }
+    // importante to exit before to deallocate all variables!
+    self.ctx.exit_scope();
+  }
+  pub fn enter_scope(&mut self) {
+    self.ctx.enter_scope();
   }
 
   pub fn _new_number(&mut self, value: &ast::NumericLiteral) -> Value {
@@ -367,32 +406,6 @@ impl<'ctx> Compiler<'ctx> {
         self.ctx.define_variable(name.to_owned(), None, StoreKind::Let)
       }
       StoreKind::Var => self.ctx.define_variable(name.to_owned(), None, StoreKind::Var),
-    }
-  }
-
-  pub fn generate_binary_expression(&mut self, binary: &ast::BinaryExpression) {
-    self.generate_expression(&binary.left);
-    self.generate_expression(&binary.right);
-    match binary.operator.as_str() {
-      "+" => {
-        self.emit(opcode::OPCODE_ADD);
-      }
-      "-" => {
-        self.emit(opcode::OPCODE_SUB);
-      }
-      "*" => {
-        self.emit(opcode::OPCODE_MUL);
-      }
-      "/" => {
-        self.emit(opcode::OPCODE_DIV);
-      }
-      "===" => {
-        self.emit(opcode::OPCODE_EQ);
-      }
-      _ => {
-        // **, %, <<, >>, >>>, &, |, ^, ==, !=, ===, !==, <, <=, >, >=, in, instanceof
-        panic!("Unknown binary operator")
-      }
     }
   }
 }

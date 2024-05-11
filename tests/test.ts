@@ -1,9 +1,8 @@
 let age: number = 10;
-
-age = age + 11;
-
 {
-  const age = undefined;
+  const age: number = 1;
+  const ge: number = 1;
+  const ae: number = 1;
+  const ag: number = 1;
+  const e: number = 1;
 }
-
-const a = 10;
