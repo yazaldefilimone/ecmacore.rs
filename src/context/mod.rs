@@ -9,10 +9,19 @@ pub enum StoreKind {
   Let,
   Var,
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum EngineTypes {
+  String,
+  Number,
+  Any,
+  Undefined,
+}
 pub struct Store {
   pub name: String,
   pub value: Value,
   pub kind: StoreKind,
+  pub _type: EngineTypes,
   pub level: usize,
 }
 
@@ -25,7 +34,13 @@ pub struct Context {
 impl Default for Context {
   fn default() -> Self {
     let global = vec![
-      Store { name: "undefined".to_string(), value: Value::new_undefined(), level: 0, kind: StoreKind::Const },
+      Store {
+        name: "undefined".to_string(),
+        value: Value::new_undefined(),
+        level: 0,
+        kind: StoreKind::Const,
+        _type: EngineTypes::Undefined,
+      },
       // Store { name: "undefined".to_string(), value: Value::Undefined },
       // Store { name: "NaN".to_string(), value: Value::NaN },
       // Store { name: "Infinity".to_string(), value: Value::Infinity },
@@ -138,10 +153,13 @@ impl Context {
   pub fn is_global_scope(&self) -> bool {
     self.current_scope == 0
   }
+  pub fn get_type(&mut self, idx: usize) -> EngineTypes {
+    return self.get_variable(idx)._type.clone();
+  }
   pub fn get_current_scope(&self) -> usize {
     self.current_scope
   }
-  pub fn define_variable(&mut self, name: String, value: Option<Value>, kind: StoreKind) -> usize {
+  pub fn define_variable(&mut self, name: String, value: Option<Value>, kind: StoreKind, _type: EngineTypes) -> usize {
     if self.is_global_scope() {
       let index = match self.get_variable_index(&name) {
         Some(index) => index,
@@ -150,6 +168,7 @@ impl Context {
           self.global.push(Store {
             name,
             kind,
+            _type,
             level: self.current_scope,
             value: match value {
               Some(v) => v,
@@ -168,6 +187,7 @@ impl Context {
         self.local.push(Store {
           name,
           kind,
+          _type,
           level: self.current_scope,
           value: match value {
             Some(v) => v,

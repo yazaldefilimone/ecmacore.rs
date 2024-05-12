@@ -1,9 +1,10 @@
 use crate::bytecode::opcode;
-use crate::context::StoreKind;
+use crate::context::{EngineTypes, StoreKind};
 use crate::{context::Context, values::Value};
 
 use oxc_ast::ast::{self, AssignmentTarget, Program};
 use oxc_syntax::NumberBase;
+use serde_json::value::Index;
 
 pub struct Compiler<'ctx> {
   code: Vec<usize>,
@@ -197,6 +198,35 @@ impl<'ctx> Compiler<'ctx> {
       self._variable_declarator(&declarator.id, &declarator.init, &kind);
     }
   }
+
+  pub fn _type_infer(&mut self, id: &ast::BindingPattern) -> EngineTypes {
+    if let Some(ts_type) = &id.type_annotation {
+      match ts_type.type_annotation {
+        ast::TSType::TSStringKeyword(_) => return EngineTypes::String,
+        ast::TSType::TSNumberKeyword(_) => {
+          return EngineTypes::Number;
+        }
+        ast::TSType::TSAnyKeyword(_) => {
+          return EngineTypes::Any;
+        }
+        _ => panic!("Todo: improve it"),
+      }
+    } else {
+      return EngineTypes::Any;
+    }
+  }
+
+  pub fn _type_checker(&mut self, obj: Value, _type: EngineTypes) {
+    match (&obj, &_type) {
+      (&Value::Number(_), EngineTypes::Number)
+      | (&Value::String(_), EngineTypes::String)
+      | (&Value::Undefined, EngineTypes::Undefined) => {}
+      _ => {
+        panic!("[Compiler]: Cannot Assignment data with type {} for {}", _type, obj)
+      }
+    }
+  }
+
   // !todo: we need to return the index of the variable for make more efficient to get the variable?
   pub fn _variable_declarator(
     &mut self,
@@ -212,7 +242,8 @@ impl<'ctx> Compiler<'ctx> {
             ident.name
           );
         }
-        let idx = self._define_variable(ident.name.as_str(), kind.clone());
+        let _type = self._type_infer(&pattern);
+        let idx = self._define_variable(ident.name.as_str(), kind.clone(), _type);
         self.declarator_init(init, idx);
       }
       ast::BindingPatternKind::ArrayPattern(elem) => {
@@ -226,7 +257,7 @@ impl<'ctx> Compiler<'ctx> {
         for property in &objects.properties {
           match &property.key {
             ast::PropertyKey::Identifier(ident) => {
-              let idx = self._define_variable(ident.name.as_str(), kind.clone());
+              let idx = self._define_variable(ident.name.as_str(), kind.clone(), EngineTypes::Any);
               self.declarator_init(init, idx);
             }
             // ast::PropertyKey::PrivateIdentifier(ident) => {
@@ -250,8 +281,13 @@ impl<'ctx> Compiler<'ctx> {
   pub fn declarator_init(&mut self, init: &Option<ast::Expression>, idx: usize) {
     if let Some(init) = init {
       self.generate_expression(&init);
+      let last = self.constants[self.code[self.code.len() - 1]].clone();
+      let _var_type = self.ctx.get_type(idx);
+      self._type_checker(last, _var_type);
     } else {
       // todo: panic error when is `const` declaraction
+      let _var_type = self.ctx.get_type(idx);
+      self._type_checker(Value::new_undefined(), _var_type);
       self.constants.push(Value::new_undefined())
     }
     if self.ctx.is_global_scope() {
@@ -391,21 +427,21 @@ impl<'ctx> Compiler<'ctx> {
     self.constants.push(value);
     return self.constants.len() - 1;
   }
-  pub fn _define_variable(&mut self, name: &str, kind: StoreKind) -> usize {
+  pub fn _define_variable(&mut self, name: &str, kind: StoreKind, _type: EngineTypes) -> usize {
     match kind {
       StoreKind::Const => {
         if self.ctx.is_exist_variable(name) {
           panic!("[Compiler] SyntaxError: '{}' has already been declared.", name);
         }
-        self.ctx.define_variable(name.to_owned(), None, StoreKind::Const)
+        self.ctx.define_variable(name.to_owned(), None, StoreKind::Const, _type)
       }
       StoreKind::Let => {
         if self.ctx.is_exist_variable(name) {
           panic!("[Compiler] SyntaxError: '{}' has already been declared.", name);
         }
-        self.ctx.define_variable(name.to_owned(), None, StoreKind::Let)
+        self.ctx.define_variable(name.to_owned(), None, StoreKind::Let, _type)
       }
-      StoreKind::Var => self.ctx.define_variable(name.to_owned(), None, StoreKind::Var),
+      StoreKind::Var => self.ctx.define_variable(name.to_owned(), None, StoreKind::Var, _type),
     }
   }
 }

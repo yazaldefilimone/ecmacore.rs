@@ -69,7 +69,7 @@ impl<'ctx> Engine<'ctx> {
 
   fn set_local_scope_operation(&mut self) {}
   fn load_local_scope_operation(&mut self) {
-    let index = self.read();
+    let _index = self.read();
   }
 
   fn set_global_scope_operation(&mut self) {

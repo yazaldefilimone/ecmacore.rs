@@ -1,3 +1,4 @@
+use crate::context::EngineTypes;
 use crate::values::boolean::BooleanValue;
 use crate::values::number::NumberValue;
 use crate::values::object::ObjectValue;
@@ -16,6 +17,16 @@ impl Display for Value {
       Value::Object(obj) => write!(f, "{}", obj),
       Value::EOL => write!(f, "End of Line"),
       // _ => write!(f, "Unknown Value"),
+    }
+  }
+}
+impl Display for EngineTypes {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match &self {
+      EngineTypes::String => write!(f, "string"),
+      EngineTypes::Number => write!(f, "number"),
+      EngineTypes::Undefined => write!(f, "undefined"),
+      _ => write!(f, "Unknown Value"),
     }
   }
 }
