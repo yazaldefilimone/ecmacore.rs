@@ -1,4 +1,3 @@
-use std::env::args;
 mod bytecode;
 mod checker;
 mod compiler;
@@ -12,23 +11,32 @@ mod utils;
 mod values;
 mod vm;
 use vm::core;
+mod cli;
+use cli::command_line;
 
 fn main() {
-  let command = args().nth(1);
-  let flag = args().nth(2).unwrap_or(String::from(""));
-  let source = if Some("run") != command.as_deref() {
-    String::from("30 + 30")
-  } else {
-    let flag = args().nth(2).expect("no filename provided");
-    let filename = if flag.starts_with("-") {
-      args().nth(3).expect("no filename provided")
-    } else {
-      flag
-    };
-    std::fs::read_to_string(&filename).expect("could not read file")
-  };
-  let mut ctx = context::Context::new();
+  let matches = command_line();
+  match matches.subcommand() {
+    Some(("run", matches)) => {
+      let file = matches.get_one::<String>("file").unwrap();
+      let debug = matches.get_flag("debug");
+      let source = std::fs::read_to_string(file).expect("could not read file");
+      run(source, debug);
+    }
+    Some(("compile", matches)) => {
+      let file = matches.get_one::<String>("file").unwrap();
+      let debug = matches.get_flag("debug");
+      let source = std::fs::read_to_string(file).expect("could not read file");
+      run(source, debug);
+    }
+    _ => {
+      panic!("Unknown command");
+    }
+  }
+}
 
-  let result = core::Engine::bootstrap(&mut ctx, &source, flag == "--debug");
+fn run(source: String, is_debug: bool) {
+  let mut ctx = context::Context::new();
+  let result = core::Engine::bootstrap(&mut ctx, &source, is_debug);
   println!("{:?}", result);
 }

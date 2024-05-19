@@ -1,9 +1,8 @@
 use oxc_allocator::Allocator;
 use oxc_span::SourceType;
 pub mod compiler;
-use compiler::Compiler;
-
 use crate::context::Context;
+use compiler::Compiler;
 
 use self::compiler::CompilerReturn;
 
