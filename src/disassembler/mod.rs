@@ -1,6 +1,4 @@
 #![allow(dead_code)]
-use std::fmt::format;
-
 use crate::bytecode::opcode;
 use crate::context::Context;
 use crate::utils::opcode_to_string;
@@ -22,13 +20,12 @@ impl<'ctx> Disassembler<'ctx> {
     Self { code, constants, instructions, ctx, line, name: name.to_owned() }
   }
   pub fn disassemble(&mut self) -> () {
-    // --- disassemble ---
-    let header = format!("{:<12} {:<8} {:<12} {}", "OFFSET", "BYTES", "OPCODE", "OPERAND");
-    let mut offset = 0;
-    println!("--------------- Disassemble: {} ------------", self.name);
-    println!("");
+    let header = format!("{:<10} {:<12} {:<14} {}", "Offset", "Bytes", "Opcode", "Operand");
+    println!("----------------- Disassembler -----------------");
     println!("{}", header);
-
+    println!("------------------------------------------------");
+    // ------------------------------------------------
+    let mut offset = 0;
     while offset < self.code.len() {
       offset = self.disassemble_instruction(offset);
       self.print_line();
@@ -111,10 +108,10 @@ impl<'ctx> Disassembler<'ctx> {
     for i in 0..count {
       output += format!("{:02X} ", self.code[offset + i] & 0xFF).as_str();
     }
-    self.line.push(format!("{:<8} ", output.trim()));
+    self.line.push(format!("{:<12} ", output.trim()));
   }
   pub fn print_opcode(&mut self, opcode: usize) -> () {
-    self.line.push(format!("{:<12} ", opcode_to_string(opcode).trim()));
+    self.line.push(format!("{:<14} ", opcode_to_string(opcode).trim()));
   }
   pub fn print_operand(&mut self, operand: String) -> () {
     self.line.push(format!("({})", operand));
@@ -122,11 +119,11 @@ impl<'ctx> Disassembler<'ctx> {
 
   pub fn print_offset(&mut self, offset: usize) -> () {
     let formatted = format!("{:08X} ", offset);
-    self.line.push(format!("{:<12} ", formatted.trim()));
+    self.line.push(format!("{:<10} ", formatted.trim()));
   }
 
   pub fn print_line(&mut self) -> () {
-    println!("{}", self.line.join(""));
+    println!("{}", format!("{}", self.line.join("")));
     self.line.clear();
   }
 }
