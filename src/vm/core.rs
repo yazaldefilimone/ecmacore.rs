@@ -28,7 +28,7 @@ impl<'ctx> Engine<'ctx> {
     let vm = Engine::new(ctx, &mut stack, &compiler);
     // debug
     if _debug {
-      let mut disassembler = Disassembler::new(&compiler.code, &compiler.constants, vm.ctx);
+      let mut disassembler = Disassembler::new(&compiler.code, "main.ts", &compiler.constants, vm.ctx);
       disassembler.disassemble();
     }
     vm.run()
