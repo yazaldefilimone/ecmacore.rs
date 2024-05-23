@@ -77,7 +77,7 @@ impl<'ctx> Disassembler<'ctx> {
     self.dumb_bytecode(offset, 2);
     self.print_opcode(opcode);
     let index = self.code[offset + 1];
-    let var = self.ctx.get_global_variable_name(index);
+    let var = &self.ctx.get_global_variable(index).unwrap().name;
     self.print_operand(var.to_owned());
     return offset + 2;
   }
@@ -85,7 +85,7 @@ impl<'ctx> Disassembler<'ctx> {
     self.dumb_bytecode(offset, 2);
     self.print_opcode(opcode);
     let index = self.code[offset + 1];
-    let var = self.ctx.get_local_variable_name(index);
+    let var = &self.ctx.get_local_variable(index).unwrap().name;
     self.print_operand(var.to_owned());
     return offset + 2;
   }
