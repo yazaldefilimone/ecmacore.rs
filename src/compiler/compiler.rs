@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::bytecode::opcode;
-use crate::context::{Context, StoreKind};
+use crate::context::{Context, Kind};
 use crate::values::Value;
 use oxc_ast::ast::{self, AssignmentTarget, Program};
 use oxc_syntax::NumberBase;
@@ -97,7 +97,7 @@ impl<'ctx> Compiler<'ctx> {
     match target {
       ast::SimpleAssignmentTarget::AssignmentTargetIdentifier(id) => {
         if let Some(kind) = self.ctx.get_kind_variable(&id.name) {
-          if kind == StoreKind::Const {
+          if kind == Kind::Const {
             panic!("[Compiler] TypeError: '{}' is a read-only variable", id.name);
           }
         }
@@ -132,27 +132,22 @@ impl<'ctx> Compiler<'ctx> {
 
   fn generate_variable_declaration(&mut self, declaration: &ast::VariableDeclaration) {
     match declaration.kind {
-      ast::VariableDeclarationKind::Let => self.handle_variable_declaration(declaration, StoreKind::Let),
-      ast::VariableDeclarationKind::Const => self.handle_variable_declaration(declaration, StoreKind::Const),
+      ast::VariableDeclarationKind::Let => self.handle_variable_declaration(declaration, Kind::Let),
+      ast::VariableDeclarationKind::Const => self.handle_variable_declaration(declaration, Kind::Const),
       _ => panic!("Unknown variable declaration kind"),
     }
   }
 
-  fn handle_variable_declaration(&mut self, declaration: &ast::VariableDeclaration, kind: StoreKind) {
+  fn handle_variable_declaration(&mut self, declaration: &ast::VariableDeclaration, kind: Kind) {
     for declarator in &declaration.declarations {
       self.handle_variable_declarator(&declarator.id, &declarator.init, &kind);
     }
   }
 
-  fn handle_variable_declarator(
-    &mut self,
-    pattern: &ast::BindingPattern,
-    init: &Option<ast::Expression>,
-    kind: &StoreKind,
-  ) {
+  fn handle_variable_declarator(&mut self, pattern: &ast::BindingPattern, init: &Option<ast::Expression>, kind: &Kind) {
     match &pattern.kind {
       ast::BindingPatternKind::BindingIdentifier(ident) => {
-        if kind == &StoreKind::Const && init.is_none() {
+        if kind == &Kind::Const && init.is_none() {
           panic!(
             "[Compiler] SyntaxError: 'const' declarations must be initialized at '{}'",
             ident.name
@@ -304,7 +299,7 @@ impl<'ctx> Compiler<'ctx> {
     self.constants.len() - 1
   }
 
-  fn define_variable(&mut self, name: &str, kind: StoreKind) -> usize {
+  fn define_variable(&mut self, name: &str, kind: Kind) -> usize {
     if self.ctx.is_exist_variable(name) {
       panic!("[Compiler] SyntaxError: '{}' has already been declared.", name);
     }
