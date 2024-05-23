@@ -56,7 +56,6 @@ impl<'ctx> Compiler<'ctx> {
         self._block_statement(stmt);
       }
       _ => {
-        print!("{:?}", statement);
         panic!("Unknown statement")
       }
     }
@@ -334,7 +333,6 @@ impl<'ctx> Compiler<'ctx> {
 
   pub fn exit_scope(&mut self) {
     let len_of_variable_exit = self.ctx.deallocate_variable_in_scope();
-    println!("{}", len_of_variable_exit);
     if len_of_variable_exit > 0 {
       self.emit(opcode::OPCODE_SCOPE_EXIT);
       self.emit(len_of_variable_exit);

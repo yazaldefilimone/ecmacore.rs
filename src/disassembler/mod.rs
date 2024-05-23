@@ -7,30 +7,34 @@ use crate::values::Value;
 pub struct Disassembler<'ctx> {
   constants: &'ctx Vec<Value>,
   code: &'ctx Vec<usize>,
-  string: String,
+  instructions: Vec<Vec<String>>,
+  name: String,
+  line: Vec<String>,
   ctx: &'ctx mut Context,
 }
 
 impl<'ctx> Disassembler<'ctx> {
-  pub fn new(code: &'ctx Vec<usize>, constants: &'ctx Vec<Value>, ctx: &'ctx mut Context) -> Self {
-    Self { code, constants, string: String::new(), ctx }
+  pub fn new(code: &'ctx Vec<usize>, name: &str, constants: &'ctx Vec<Value>, ctx: &'ctx mut Context) -> Self {
+    let instructions = vec![];
+    let line = vec![];
+    Self { code, constants, instructions, ctx, line, name: name.to_owned() }
   }
   pub fn disassemble(&mut self) -> () {
-    println!("~~~~~~~~~~~~~~~~~ Disasseble ~~~~~~~~~~~~~~~");
-    println!("Offset    Bytes     Opcode    Operand");
-    println!("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-    let mut ip = 0;
-    while ip < self.code.len() {
-      ip = self.disassemble_instruction(ip);
-      println!("{}", self.string);
+    let header = format!("{:<10} {:<12} {:<14} {}", "Offset", "Bytes", "Opcode", "Operand");
+    println!("----------------- Disassembler -----------------");
+    println!("{}", header);
+    println!("------------------------------------------------");
+    // ------------------------------------------------
+    let mut offset = 0;
+    while offset < self.code.len() {
+      offset = self.disassemble_instruction(offset);
+      self.print_line();
     }
-    println!("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
   }
 
-  fn disassemble_instruction(&mut self, ip: usize) -> usize {
-    self.string.clear();
-    self.string += format!("{:04}      ", ip).as_str();
-    let opcode = self.code[ip];
+  fn disassemble_instruction(&mut self, offset: usize) -> usize {
+    self.print_offset(offset);
+    let opcode = self.code[offset];
     match opcode {
       opcode::OPCODE_HALF
       | opcode::OPCODE_SUB
@@ -39,23 +43,23 @@ impl<'ctx> Disassembler<'ctx> {
       | opcode::OPCODE_ADD
       | opcode::OPCODE_POP
       | opcode::OPCODE_EQ => {
-        return self.disassemble_simple(opcode, ip);
+        return self.disassemble_simple(opcode, offset);
       }
       opcode::OPCODE_CONST => {
-        return self.disassemble_const(ip, opcode);
+        return self.disassemble_const(offset, opcode);
       }
       opcode::OPCODE_SET_GLOBAL_SCOPE | opcode::OPCODE_LOAD_GLOBAL_SCOPE => {
-        return self.disassemble_global(ip, opcode);
+        return self.disassemble_global(offset, opcode);
       }
       opcode::OPCODE_SET_LOCAL_SCOPE | opcode::OPCODE_LOAD_LOCAL_SCOPE => {
-        return self.disassemble_local(ip, opcode);
+        return self.disassemble_local(offset, opcode);
       }
       opcode::OPCODE_JUMP_IF_FALSE | opcode::OPCODE_JUMP => {
-        return self.disassemble_jump(ip, opcode);
+        return self.disassemble_jump(offset, opcode);
       }
       _ => {
         print!("[Disassemble] Unknown opcode: {}", opcode_to_string(opcode));
-        return ip + 1;
+        return offset + 1;
       }
     }
   }
@@ -65,28 +69,31 @@ impl<'ctx> Disassembler<'ctx> {
     self.print_opcode(opcode);
     let index = self.code[offset + 1];
     let jump = self.code[offset + 2];
-    self.string += format!("    ({}) -> {}", index, jump).as_str();
+    self.line.push(format!("{:<8}", index));
+    self.line.push(format!("{:<8}", jump));
     return offset + 3;
   }
   pub fn disassemble_global(&mut self, offset: usize, opcode: usize) -> usize {
     self.dumb_bytecode(offset, 2);
     self.print_opcode(opcode);
     let index = self.code[offset + 1];
-    self.string += format!("    ({})", self.ctx.get_global_variable_name(index)).as_str();
+    let var = self.ctx.get_global_variable_name(index);
+    self.print_operand(var.to_owned());
     return offset + 2;
   }
   pub fn disassemble_local(&mut self, offset: usize, opcode: usize) -> usize {
     self.dumb_bytecode(offset, 2);
     self.print_opcode(opcode);
     let index = self.code[offset + 1];
-    self.string += format!("    ({})", self.ctx.get_local_variable_name(index)).as_str();
+    let var = self.ctx.get_local_variable_name(index);
+    self.print_operand(var.to_owned());
     return offset + 2;
   }
   pub fn disassemble_const(&mut self, offset: usize, opcode: usize) -> usize {
     self.dumb_bytecode(offset, 2);
     self.print_opcode(opcode);
     let index = self.code[offset + 1];
-    self.string += format!("    ({})", self.constants[index]).as_str();
+    self.print_operand(self.constants[index].to_string());
     return offset + 2;
   }
 
@@ -97,17 +104,26 @@ impl<'ctx> Disassembler<'ctx> {
   }
 
   pub fn dumb_bytecode(&mut self, offset: usize, count: usize) -> () {
+    let mut output = String::new();
     for i in 0..count {
-      self.string += format!("{:02x}  ", self.code[offset + i]).as_str();
+      output += format!("{:02X} ", self.code[offset + i] & 0xFF).as_str();
     }
-    self.string += "  ";
+    self.line.push(format!("{:<12} ", output.trim()));
   }
-
   pub fn print_opcode(&mut self, opcode: usize) -> () {
-    self.string += format!("{}", opcode_to_string(opcode)).as_str()
+    self.line.push(format!("{:<14} ", opcode_to_string(opcode).trim()));
+  }
+  pub fn print_operand(&mut self, operand: String) -> () {
+    self.line.push(format!("({})", operand));
   }
 
-  pub fn disassemble_hex(&self, index: usize) -> String {
-    format!("{:x}", index)
+  pub fn print_offset(&mut self, offset: usize) -> () {
+    let formatted = format!("{:08X} ", offset);
+    self.line.push(format!("{:<10} ", formatted.trim()));
+  }
+
+  pub fn print_line(&mut self) -> () {
+    println!("{}", format!("{}", self.line.join("")));
+    self.line.clear();
   }
 }

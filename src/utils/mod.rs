@@ -17,7 +17,7 @@ pub fn opcode_to_string(opcode: usize) -> String {
     opcode::OPCODE_LOAD_LOCAL_SCOPE => "LOAD_LOCAL".to_string(),
     opcode::OPCODE_SET_LOCAL_SCOPE => "SET_LOCAL".to_string(),
     opcode::OPCODE_POP => "POP".to_string(),
-    _ => format!("Unknown opcode: {}", opcode),
+    _ => "UNKNOWN".to_string(),
   }
 }
 

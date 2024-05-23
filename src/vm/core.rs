@@ -28,7 +28,7 @@ impl<'ctx> Engine<'ctx> {
     let vm = Engine::new(ctx, &mut stack, &compiler);
     // debug
     if _debug {
-      let mut disassembler = Disassembler::new(&compiler.code, &compiler.constants, vm.ctx);
+      let mut disassembler = Disassembler::new(&compiler.code, "main.ts", &compiler.constants, vm.ctx);
       disassembler.disassemble();
     }
     vm.run()
@@ -69,7 +69,7 @@ impl<'ctx> Engine<'ctx> {
 
   fn set_local_scope_operation(&mut self) {}
   fn load_local_scope_operation(&mut self) {
-    let index = self.read();
+    // let index = self.read();
   }
 
   fn set_global_scope_operation(&mut self) {
