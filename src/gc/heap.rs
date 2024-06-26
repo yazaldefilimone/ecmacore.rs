@@ -51,10 +51,9 @@ impl Heap {
       let mut object = object.lock().unwrap();
       if object.marked {
         object.marked = false;
-        true
-      } else {
-        false
+        return true;
       }
+      return false;
     });
   }
 
