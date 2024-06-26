@@ -1,24 +1,17 @@
-#![allow(dead_code)]
+/*
+Copyright 2024 Yazalde Filimone <yazaldefilimon@gmail.com>
 
-use super::Value;
-#[derive(Debug, Clone)]
-pub enum ObjectValue {
-  Null,
-}
+
+*/
+
+/*
+*/
+
+#[derive(Debug)]
+pub struct ObjectValue {}
 
 impl ObjectValue {
-  pub fn is_truthy(&self) -> bool {
-    match self {
-      ObjectValue::Null => false,
-    }
-  }
-  pub fn is_falsy(&self) -> bool {
-    !self.is_truthy()
-  }
-  pub fn is_equal(&self, other: &Value) -> bool {
-    match (self, other) {
-      (ObjectValue::Null, Value::Object(ObjectValue::Null)) => true,
-      _ => false,
-    }
+  pub fn new() -> Self {
+    ObjectValue {}
   }
 }
