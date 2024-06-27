@@ -1,6 +1,6 @@
 <samp>
 
-based on [ECMAScript Language Specification](https://tc39.es/ecma262/#sec-intro), and inspired by [JavaScriptCore](https://github.com/WebKit/webkit/tree/main/Source/JavaScriptCore)]
+based on [ECMAScript Language Specification](https://tc39.es/ecma262/#sec-intro), and inspired by [JavaScriptCore](https://github.com/WebKit/webkit/tree/main/Source/JavaScriptCore)
 
 > Write readme's is so boring...
 
