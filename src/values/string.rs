@@ -1,24 +1,18 @@
-use super::Value;
+/*
+Copyright 2024 Yazalde Filimone <yazaldefilimon@gmail.com>
 
-// string in js/ts language
-#[derive(Debug, Clone, PartialEq)]
-pub enum StringValue {
-  String(String),
+
+*/
+
+/*
+*/
+#[derive(Debug)]
+pub struct StringValue {
+  value: String,
 }
 
 impl StringValue {
-  pub fn is_truthy(&self) -> bool {
-    match self {
-      StringValue::String(s) => !s.is_empty(),
-    }
-  }
-  pub fn is_falsy(&self) -> bool {
-    !self.is_truthy()
-  }
-  pub fn is_equal(&self, other: &Value) -> bool {
-    match (self, other) {
-      (StringValue::String(s), Value::String(StringValue::String(s2))) => s == s2,
-      _ => false,
-    }
+  pub fn new(value: String) -> Self {
+    StringValue { value }
   }
 }
