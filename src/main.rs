@@ -15,9 +15,10 @@ mod errors;
 mod formatting;
 mod gc;
 mod parser;
+mod regex;
+mod runtime;
 mod stack;
 mod utils;
-mod values;
 mod vm;
 //  uses
 use cli::command_line;
